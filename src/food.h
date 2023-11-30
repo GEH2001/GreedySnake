@@ -1,5 +1,6 @@
 #pragma once
 #include "point.h"
+#include "event.h"
 #include <vector>
 
 class Snake;
@@ -14,6 +15,7 @@ private:
 public:
     FoodManager(int _num);
     FoodManager(int _num, float _prob[]);
-    void Generate(Snake &snake, Map &map);
+    void Generate(Snake &snake, Map &map, int _time, std::vector<Event>& _events);
+    void Generate(Snake &snake, Map &map, int x, int y, int value);
     int BeEaten(const Point &head);
 };

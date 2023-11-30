@@ -12,8 +12,8 @@ private:
     std::string mapfile;    // 地图文件相对路径 maps/default.map
     int LoadMap(const std::string _mapfile);
 public:
-    static int width;
-    static int height;
+    static int width;  // 地图大小
+    static int height; //
 
     Map();
     Map(const std::string _mapfile);
