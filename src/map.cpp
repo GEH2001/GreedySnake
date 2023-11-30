@@ -7,6 +7,7 @@
 int Map::width = 15;
 int Map::height = 15;
 
+/* 初始构造 */ 
 Map::Map() {
 
     int w = Map::width + 2;
@@ -22,6 +23,7 @@ Map::Map() {
     }
 }
 
+/* 读取地图配置构造 */
 Map::Map(const std::string _mapfile) {
     this->mapfile = "maps/" + _mapfile + ".map";
     LoadMap(this->mapfile);
@@ -49,7 +51,7 @@ int Map::LoadMap(const std::string _mapfile) {
 
     fin.close();
 
-    // 墙
+    // 墙 注意 + 2
     int w = Map::width + 2;
     int h = Map::height + 2;    // 加上边界
 
@@ -69,6 +71,7 @@ int Map::LoadMap(const std::string _mapfile) {
         }
     } 
 
+    // 绘制出虚实墙体
     for (int i = 0; i < w; i++) {
         walls.emplace_back(i, 0, walltype[0]); // 上
         walls.emplace_back(i, h - 1, walltype[1]); // 下
@@ -81,6 +84,8 @@ int Map::LoadMap(const std::string _mapfile) {
     return 0;
 }
 
+// 0  1  2  3
+// 上 下 左 右
 // 判断四面墙的虚实(上下左右), direction(0~3)
 bool Map::IsValid(int direction) const {
     if(direction > 3 || direction < 0) return true;

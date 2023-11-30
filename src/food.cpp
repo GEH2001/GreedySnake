@@ -1,6 +1,7 @@
 #include "food.h"
 #include "snake.h"
 #include "map.h"
+#include "event.h"
 
 FoodManager::FoodManager(int _num, float _prob[]) {
     num = _num;
@@ -19,18 +20,22 @@ bool FoodManager::InFoods(const Point &food) const {
     return false;
 }
 
-/* 生成食物 */
-void FoodManager::Generate(Snake &snake, Map &map) {
+/* 系统随机生成食物 */
+void FoodManager::Generate(Snake &snake, Map &map, int _time, std::vector<Event>& _events) {
     int len = foods.size();
     while(len < num) {
+        int _value;
         float r = float(rand()) / RAND_MAX;
         PointType type;
         if(r < prob[0]) {
             type = FOOD1;
+            _value = 1;
         } else if(r < prob[0] + prob[1]) {
             type = FOOD2;
+            _value = 2;
         } else {
             type = FOOD3;
+            _value = 3;
         }
         int x = rand() % (Map::width) + 1;
         int y = rand() % (Map::height) + 1;
@@ -38,10 +43,31 @@ void FoodManager::Generate(Snake &snake, Map &map) {
         if(!snake.InBody(food) && !InFoods(food) && !map.InBlocks(food)) {
             food.Print();
             foods.push_back(food);
+            // 增加food event
+            Event food_event = Event(_time, F, x, y, _value);
+            _events.push_back(food_event);
             len++;
         }
     }
 }
+
+/* 根据rec 生成食物*/
+void FoodManager::Generate(Snake &snake, Map &map, int x, int y, int value) {
+    PointType type;
+    if(value == 1) {
+        type = FOOD1;
+    } else if(value == 2) {
+        type = FOOD2;
+    } else {
+        type = FOOD3;
+    }
+    Point food(x, y, type);
+    if(!snake.InBody(food) && !InFoods(food) && !map.InBlocks(food)) {
+        food.Print();
+        foods.push_back(food);
+    }
+}
+
 
 /* 判断蛇头是否吃到食物 */
 int FoodManager::BeEaten(const Point &head) {

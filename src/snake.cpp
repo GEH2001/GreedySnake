@@ -3,6 +3,7 @@
 #include <conio.h>
 #include <ctime>
 
+/* 初始状态：蛇的初始长度为 4，蛇头在地图的正中央，面向右侧*/
 Snake::Snake() {
     int x_center = Map::width / 2 + 1;
     int y_center = Map::height / 2 + 1;
@@ -66,7 +67,7 @@ void Snake::Move() {
 }
 
 
-/* 方向控制W A S D; 空格暂停 */
+/* 方向控制W A S D; 空格暂停；返回时间间隔中最后一个按键 */
 int Snake::WaitKey(int interval) {
     char ch;
     Direction newDirection = direction;
@@ -74,6 +75,9 @@ int Snake::WaitKey(int interval) {
     int start = clock();
     int end = start;
 
+    // 返回时间间隔中最后一个按键
+    // -1   0  1  2  3
+    // 暂停 上 下 左 右
     while(end - start < interval) {
         if(kbhit()) {
             ch = getch();
@@ -94,9 +98,40 @@ int Snake::WaitKey(int interval) {
     }
 
     direction = newDirection; // 更新方向
+    return direction;
+    // return 0;
+}
+
+/* 延时 */
+int Snake::Wait(int interval) {
+    int start = clock();
+    int end = start;
+    while(end - start < interval) {
+        end = clock();
+    }
     return 0;
 }
 
+int Snake::RecDirection(Direction _direction) {
+    char ch;
+    Direction newDirection = direction;
+
+    // 返回时间间隔中最后一个按键
+    // -1   0  1  2  3
+    // 暂停 上 下 左 右
+    if((_direction == UP) && direction != DOWN) {
+        newDirection = UP;
+    } else if((_direction == DOWN) && direction != UP) {
+        newDirection = DOWN;
+    } else if((_direction == LEFT) && direction != RIGHT) {
+        newDirection = LEFT;
+    } else if((_direction == RIGHT) && direction != LEFT) {
+        newDirection = RIGHT;
+    }
+
+    direction = newDirection; // 更新方向
+    return direction;
+}
 
 /* 判断点p是否与蛇身重合, 用于生成食物的时候判断 */
 bool Snake::InBody(Point &p) const {

@@ -3,7 +3,7 @@
 #include "snake.h"
 #include "food.h"
 #include "utils.h"
-
+#include "point.h"
 #include <conio.h>
 #include <ctime>
 #include <iostream>
@@ -13,8 +13,16 @@
 std::string Controller::setting = "setting.txt";
 
 Controller::Controller() {
+    play_time = 0;
     ReadSetting();
     ReadConfig();
+}
+
+int Controller::GetTime() const {
+    return play_time;
+}
+void Controller::AddTime() {
+    play_time ++;
 }
 
 // 读取setting.txt, 载入用户上次的设置
@@ -67,6 +75,7 @@ int Controller::ReadConfig() {
 
 void Controller::Run() {
     while(true) {
+        // 主界面，用户输入选择功能
         int choice = MainInterface();
         switch (choice)
         {
@@ -88,13 +97,16 @@ void Controller::Run() {
         case 5:
             MapCreateInterface();
             break;
+        case 6:
+            RecordPlayInterface();
+            break;
         default:
             break;
         }
     }
 }
 
-/* 主界面 */
+/* 主界面：一级界面*/
 int Controller::MainInterface() {
     system("cls");
     std::cin.sync(); // 清空输入缓冲区
@@ -113,6 +125,8 @@ int Controller::MainInterface() {
     std::cout << "Choose Map(m)";
     SetCursor(beginX, beginY + 6);
     std::cout << "Create Map(n)";
+    SetCursor(beginX, beginY + 7);
+    std::cout << "Play Record(r)";
     char ch;
     int choice;
     while(ch = getch()) {
@@ -142,6 +156,10 @@ int Controller::MainInterface() {
         case 'N':
             choice = 5;
             break;
+        case 'r':
+        case 'R':
+            choice = 6;
+            break;
         default:
             choice = -1;
             break;
@@ -154,6 +172,7 @@ int Controller::MainInterface() {
 }
 
 /* 游戏右边显示current score, config, map */
+// 缺省值是类里维护的,可以自己传入,因为有回放
 int Controller::DrawSidebar() {
     int beginX = Map::width + 10, beginY = 1;
     SetCursor(beginX, beginY);
@@ -171,16 +190,33 @@ int Controller::DrawSidebar() {
     return 0;
 }
 
+int Controller::DrawSidebar(std::string _configname, std::string _mapname) {
+    int beginX = Map::width + 10, beginY = 1;
+    SetCursor(beginX, beginY);
+    std::cout << "current score:  0";
+    SetCursor(beginX, beginY + 1);
+    std::cout << "config:         " << _configname;
+    SetCursor(beginX, beginY + 2);
+    std::cout << "map:            " << _mapname;
+
+    SetCursor(beginX, beginY + 5);
+    std::cout << "Move(W A S D)";
+    SetCursor(beginX, beginY + 6);
+    std::cout << "Pause(Space)";
+
+    return 0;
+}
+
 /* 更新得分 */
 int Controller::UpdateScore(int score) {
     int beginX = Map::width + 10, beginY = 1;
-    SetCursor(beginX + 16, beginY);
+    SetCursor(beginX + 16, beginY); // 覆盖掉
     std::cout << score;
 
     return 0;
 }
 
-/* 游戏二级界面, 操控蛇的移动 */
+/* 游戏界面：二级界面, 操控蛇的移动 */
 int Controller::GamePlayInterface() {
     system("cls");
     std::cin.sync(); // 清空输入缓冲区
@@ -203,37 +239,86 @@ int Controller::GamePlayInterface() {
     Snake snake;
     snake.Print();
     FoodManager foodManager(uconfig.foodNum, uconfig.foodProb);
-    foodManager.Generate(snake, map);
+    // 这里要修改代码,生成食物要有所记录,直接在该函数里面记录了
+    foodManager.Generate(snake, map, this->play_time, this->events); 
 
     while(true) {
-        if(snake.WaitKey(int(1000 / uconfig.level)) == -1) { // 暂停
+        // if(snake.WaitKey(int(1000 / uconfig.level)) == -1) { // 暂停
+        //     int status = GamePause();
+        //     if(status == 0) { // 退出游戏
+        //         return 0;
+        //     }
+        // }
+
+        int user_op = snake.WaitKey(int(1000 / uconfig.level));
+
+        if (user_op == -1) { // 暂停
             int status = GamePause();
             if(status == 0) { // 退出游戏
                 return 0;
             }
         }
+
+        // begin record
+        // 用户操作记录格式
+        // 时间 + 操作方向 + 蛇头X + 蛇头Y + 目前得分
+        EventType user_event_type;
+        switch (user_op)
+        {
+        case UP:
+            user_event_type = W;
+            break;
+        case DOWN:
+            user_event_type = S;
+            break;
+        case LEFT:
+            user_event_type = A;
+            break;
+        case RIGHT:
+            user_event_type = D;
+            break;
+        default:
+            break;
+        }
+        Event user_event = Event(this->play_time, user_event_type, snake.GetHead().GetX(), \
+                                    snake.GetHead().GetY(), score); 
+        events.emplace_back(user_event);
+
+        // end record
+
         if(snake.IsHitMap(map) || snake.IsHitSelf()) {
             snake.Die();
             break; // 移动之前判断是否 即将死亡
         }
+
         int foodscore = foodManager.BeEaten(snake.GetHead());
+
         if(foodscore) {
             score += foodscore;
             UpdateScore(score);
             snake.Grow();
-            foodManager.Generate(snake, map);
+            foodManager.Generate(snake, map, this->play_time, this->events);
             continue;
         }
         snake.Move();
+        this->AddTime();
     }
     // 蛇死亡, 退出循环
 
     SetCursor(0, Map::height + 2);
     std::cout << "Game Over!" << std::endl;
-    system("pause");
+    std::cout << "Press b to record it!" << std::endl;
+    std::cout << "Others to back!" << std::endl;
+
+    char ch = getch();
+    if (ch == 'b') {
+        // record
+        RecordCreateInterface();
+    }
     return 0;
 }
 
+/* 暂停界面 */
 int Controller::GamePause() {
     char ch;
     int ret;
@@ -279,8 +364,7 @@ int Controller::GamePause() {
     return ret;
 }
 
-
-/* 选择配置 */
+/* 配置选择界面：二级界面 */
 int Controller::ConfigChooseInterface() {
     system("cls");
     std::cin.sync(); // 清空输入缓冲区
@@ -321,7 +405,7 @@ int Controller::ConfigChooseInterface() {
     return 0;
 }
 
-/* 新建配置 */
+/* 配置创建界面：二级界面 */
 int Controller::ConfigCreateInterface() {
     system("cls");
 
@@ -457,7 +541,7 @@ int Controller::ConfigCreateInterface() {
     return 0;
 }
 
-/* 地图选择页面 */
+/* 地图选择界面：二级界面 */
 int Controller::MapChooseInterface() {
     system("cls");
     std::cin.sync(); // 清空输入缓冲区
@@ -496,7 +580,6 @@ int Controller::MapChooseInterface() {
     system("pause");
     return 0; 
 }
-
 
 /* CreateMap需要: 绘制地图表格, offset是左边距, blocks是障碍物, valid是墙体虚实 */
 int Controller::DrawMapTable(int rows, int cols, int offset, int blocks[20][20], int valid[4]) {
@@ -555,8 +638,7 @@ int Controller::DrawMapTable(int rows, int cols, int offset, int blocks[20][20],
     return 0;
 }
 
-
-/* 地图创建界面 */
+/* 地图创建界面：二级界面 */
 int Controller::MapCreateInterface() {
 
     system("cls");
@@ -742,6 +824,221 @@ int Controller::MapCreateInterface() {
     std::cout << "Create new map successfully." << std::endl;
 
     std::cout << std::endl;
+    system("pause");
+    return 0;
+}
+
+/* 回放写入文件 */
+int Controller::RecordCreateInterface() {
+    system("cls");
+    std::cin.sync(); // 清空输入缓冲区
+    std::cout << "New record" << std::endl << std::endl;
+
+    std::string name;
+    std::string filepath;
+    std::regex pattern("[a-zA-Z0-9_]{1,10}");
+
+    // 回放文件名
+    while (true) {   
+        std::cout << "Note! New name must be: ";
+        SetColor(0x06);
+        std::cout << "[0-9a-zA-Z_]{1, 10}" << std::endl;
+        SetColor(0x07);
+
+        SetColor(0x03);
+        std::cout << "Input <q/Q> to exit..." << std::endl;
+        SetColor(0x07);     
+
+        std::cout << "New record name: ";
+        
+        SetColor(0x02);
+        std::getline(std::cin, name);
+        SetColor(0x07);
+
+        if(name == "q" || name == "Q") {   // 输入单独的"q"直接退出
+            return 0;
+        }
+
+        if(!std::regex_match(name, pattern)) {
+            std::cout << "\nInvalid! Input again.\n" << std::endl;
+            continue;
+        }
+        // 判断文件是否已经存在
+        filepath = "record/" + name + ".rec";
+        std::ifstream file(filepath);
+        if(file) {
+            file.close();
+            std::cout << "\nName already exist. Input again.\n" << std::endl;
+            continue;
+        }
+        
+        break;
+    }
+    std::cout << std::endl;
+
+    // 配置记录,地图记录
+    // 写入配置文件
+    std::ofstream fout(filepath);
+    if(!fout.is_open()) {
+        std::cout << "Error creating file: " << filepath << std::endl;
+        std::cout << "About to exit..." << std::endl;
+        system("pause");
+        return -1;
+    }
+    // 判断配置和地图还在不在
+    filepath = "config/" + this->configname + ".config";
+    std::ifstream f1(filepath);
+    if(!f1) {
+        std::cout << name << " Config does not exists..." << std::endl; 
+    }
+    else f1.close();
+    ReadConfig();
+
+    filepath = "maps/" + this->mapname + ".config";
+    std::ifstream f2(filepath);
+    if(!f2) {
+        std::cout << name << " Map does not exists..." << std::endl; 
+    }
+    else f2.close();
+
+    fout << this->configname << std::endl;
+    fout << this->mapname << std::endl;
+
+    // 操作记录
+    for (auto e: events) {
+        fout << e.GetTime() << " " << e.GetType() << " " << e.GetX() << " " 
+        << e.GetY() << " " << e.GetValue() << std::endl;
+    }
+
+    fout.close();
+
+    std::cout << std::endl;
+    std::cout << "New record successfully." << std::endl;
+    system("pause");
+    return 0;
+}
+
+/* 回放重播 */
+int Controller::RecordPlayInterface() {
+    // 选择并加载回放
+    system("cls");
+    std::cin.sync(); // 清空输入缓冲区
+    std::cout << "Choose record" << std::endl << std::endl;
+    SetColor(0x03);
+    std::cout << "Input <q/Q> to exit..." << std::endl << std::endl;
+    SetColor(0x07);
+
+    std::string name;
+    std::string filepath;
+    while(true) {
+        std::cout << "New record: ";
+        SetColor(0x02);
+        std::getline(std::cin, name);
+        SetColor(0x07);
+
+        if(name == "q" || name == "Q") { // 退出
+            return -1;
+        }
+
+        filepath = "record/" + name + ".rec";
+        std::ifstream f(filepath);
+        if(!f) {
+            std::cout << name << " not exists. Input again." << std::endl; 
+            continue;
+        }
+        break;
+    }
+
+    this->recname = name;
+    std::cout << "Load new record successfully." << std::endl; 
+
+    std::string rec_configname;
+    std::string rec_mapname;
+
+    filepath = "record/" + this->recname + ".rec";
+    std::ifstream f(filepath);
+    if(f.is_open()) {
+        std::getline(f, rec_configname);
+        std::getline(f, rec_mapname);
+    }
+
+    // 正式开始回放 ****************** rec *********************
+
+    system("cls");
+    std::cin.sync(); // 清空输入缓冲区
+
+    int score = 0;  // 游戏得分
+
+    // Map map;
+    Map map(rec_mapname);
+    map.Print();
+    DrawSidebar(rec_configname, rec_mapname);  // 侧边栏
+
+    Snake snake;
+    snake.Print();
+
+    // 这里食物生成不需要记录了,而是传入坐标自动打印
+    FoodManager foodManager(uconfig.foodNum, uconfig.foodProb); 
+    if(!f.is_open()) {
+        std::cout << "file not exists" << std::endl;
+    }
+    else{
+        std::string line;
+        int rec_time = 0;
+        // 逐行读取文件内容
+        while (std::getline(f, line)) {
+            std::istringstream iss(line);
+            // 每行有5个整数
+            int time, type, x, y, value;
+            iss >> time >> type >> x >> y >> value;
+            
+            // 时间不同步,才让蛇爬,时间推移
+            // 同一时间可能出现多个操作
+            while (time > rec_time) {
+                // 不需要判断死亡
+                int foodscore = foodManager.BeEaten(snake.GetHead());
+
+                if(foodscore) {
+                    score += foodscore;
+                    UpdateScore(score);
+                    snake.Grow();
+                    rec_time++;
+                    continue;
+                }
+                // Grow 也算时间 就 不 Move 了
+                snake.Move();
+                rec_time++;
+            }
+
+            // 时间同步才改变操作
+            switch (type)
+            {
+            case F:
+                foodManager.Generate(snake, map, x, y, value); 
+                break;
+            case W:
+                snake.Wait(int(1000 / uconfig.level));
+                snake.RecDirection(UP);
+                break;
+            case A:
+                snake.Wait(int(1000 / uconfig.level));
+                snake.RecDirection(LEFT);
+                break;
+            case S:
+                snake.Wait(int(1000 / uconfig.level));
+                snake.RecDirection(DOWN);
+                break;
+            case D:
+                snake.Wait(int(1000 / uconfig.level));
+                snake.RecDirection(RIGHT);
+                break;
+
+            default:
+                break;
+            }
+        }
+        // 蛇死了
+    }
     system("pause");
     return 0;
 }

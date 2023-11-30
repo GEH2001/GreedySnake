@@ -16,6 +16,8 @@ public:
     void Move();
     void Grow();
     int WaitKey(int interval);
+    int Wait(int interval);
+    int RecDirection(Direction _direction);
     bool InBody(Point &p) const;
     Point GetHead() const;
     bool IsHitMap(const Map &map) const;
