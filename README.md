@@ -4,7 +4,7 @@
 
 ## 小组人员信息
 
-郭恩惠
+郭恩惠 2020
 
 肖锦松 2020010563 电02
 
@@ -12,8 +12,8 @@
 UTF-8
 
 ## 项目运行环境
-- Windows
-- C++11
+- Windows 11
+- C++ 11
 
 ## 编译运行
 ```bash
@@ -25,6 +25,47 @@ $ make
 ## 功能实现逻辑
 
 ### 代码框架
+
+```
+Greedy Snake:.
+│   .gitignore
+│   README.md
+|
+│
+├───doc
+│       作业需求文档.pdf
+│
+└───src
+    │   controller.cpp
+    │   controller.h
+    │   event.cpp
+    │   event.h
+    │   food.cpp
+    │   food.h
+    │   main.cpp
+    │   main.exe
+    │   makefile
+    │   map.cpp
+    │   map.h
+    │   point.cpp
+    │   point.h
+    │   setting.txt
+    │   snake.cpp
+    │   snake.h
+    │   utils.cpp
+    │   utils.h
+    │
+    ├───config
+    │       default.config
+    │       medium.config
+    │
+    ├───maps
+    │       default.map
+    │       example.map
+    │
+    └───record
+            record_1.rec
+```
 
 
 
@@ -96,15 +137,27 @@ public:
 
 ##### 游戏记录回放功能
 
+新增事件类，用于记录两类事件，食物生成和蛇活动
 
+```C++
+class Event{
+private:
+    int time;
+    int x, y; // 食物坐标、蛇头坐标
+    int value; // 食物经验
+    EventType type;
+public:
+    ...
+}
+```
 
-
+游戏过程用`vector<Event>`记录所有事件，等待用户选择是否记录。回放时读取记录文件，进行强制操作即可
 
 
 
 ## 小组分工情况
 
-郭恩惠：2.1-3.2代码实现
+郭恩惠：基本的代码框架，2.1-3.2代码实现
 
 肖锦松：修改已实现的部分代码，主要是增加接口，重载部分函数，3.3代码实现，报告，视频
 
