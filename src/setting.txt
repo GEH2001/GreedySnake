@@ -1,2 +1,2 @@
-medium
+example
 example
