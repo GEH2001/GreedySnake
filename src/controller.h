@@ -33,6 +33,7 @@ public:
     Controller();
     void Run();
     int GetTime() const;
+    void ClearTime();
     void AddTime();
     int MainInterface(); // 主界面
     int GamePlayInterface(); // 游戏界面

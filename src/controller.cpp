@@ -24,6 +24,9 @@ int Controller::GetTime() const {
 void Controller::AddTime() {
     play_time ++;
 }
+void Controller::ClearTime() {
+    play_time = 0;
+}
 
 // 读取setting.txt, 载入用户上次的设置
 int Controller::ReadSetting() {
@@ -220,6 +223,9 @@ int Controller::UpdateScore(int score) {
 int Controller::GamePlayInterface() {
     system("cls");
     std::cin.sync(); // 清空输入缓冲区
+    // 請注意把time and event記錄也清空，不然會保存多局的，還會出現瞬移。。
+    events.clear();
+    ClearTime();
 
     // 时间种子
     if(this->uconfig.seed == -1) {
@@ -240,16 +246,10 @@ int Controller::GamePlayInterface() {
     snake.Print();
     FoodManager foodManager(uconfig.foodNum, uconfig.foodProb);
     // 这里要修改代码,生成食物要有所记录,直接在该函数里面记录了
+    // 初始食物生成不用增加時間步
     foodManager.Generate(snake, map, this->play_time, this->events); 
 
     while(true) {
-        // if(snake.WaitKey(int(1000 / uconfig.level)) == -1) { // 暂停
-        //     int status = GamePause();
-        //     if(status == 0) { // 退出游戏
-        //         return 0;
-        //     }
-        // }
-
         int user_op = snake.WaitKey(int(1000 / uconfig.level));
 
         if (user_op == -1) { // 暂停
@@ -281,7 +281,7 @@ int Controller::GamePlayInterface() {
             break;
         }
         Event user_event = Event(this->play_time, user_event_type, snake.GetHead().GetX(), \
-                                    snake.GetHead().GetY(), score); 
+                                    snake.GetHead().GetY()); 
         events.emplace_back(user_event);
 
         // end record
@@ -292,15 +292,18 @@ int Controller::GamePlayInterface() {
         }
 
         int foodscore = foodManager.BeEaten(snake.GetHead());
-
+        
+        // 注意這裏吃到食物后時間步也要+1，不然有小bug
         if(foodscore) {
             score += foodscore;
             UpdateScore(score);
             snake.Grow();
             foodManager.Generate(snake, map, this->play_time, this->events);
-            continue;
+            // this->AddTime();
+            // continue;
         }
         snake.Move();
+        // 移动一格时间步+1
         this->AddTime();
     }
     // 蛇死亡, 退出循环
@@ -1002,8 +1005,8 @@ int Controller::RecordPlayInterface() {
                     score += foodscore;
                     UpdateScore(score);
                     snake.Grow();
-                    rec_time++;
-                    continue;
+                    // rec_time++;
+                    // continue;
                 }
                 // Grow 也算时间 就 不 Move 了
                 snake.Move();

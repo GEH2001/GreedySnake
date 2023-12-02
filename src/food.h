@@ -9,7 +9,7 @@ class Map;
 class FoodManager {
 private:
     std::vector<Point> foods;
-    int num;    // 食物数量
+    int num;    // 食物總数量
     float prob[3]; // 食物生成概率
     bool InFoods(const Point &food) const;
 public:
